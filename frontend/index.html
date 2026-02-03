@@ -2,41 +2,116 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>プロフィール交換アプリ</title>
   <style>
+    :root {
+      --space-s: 12px;
+      --space-m: 16px;
+      --space-l: 24px;
+      --radius-m: 12px;
+    }
+    * {
+      box-sizing: border-box;
+    }
     body {
-      font-family: sans-serif;
-      padding: 1rem;
+      font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+      margin: 0;
+      padding: clamp(16px, 4vw, 28px);
+      font-size: 18px;
+      line-height: 1.5;
+      background: #f6f4ef;
+      color: #111;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: clamp(26px, 6vw, 34px);
+      margin: 0 0 var(--space-m);
+    }
+    h2 {
+      font-size: clamp(20px, 5vw, 26px);
+      margin: var(--space-l) 0 var(--space-s);
     }
     video, img {
-      max-width: 100%;
+      width: 100%;
       height: auto;
+      border-radius: var(--radius-m);
+      background: #1c1c1c;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+    }
+    #photo {
+      background: #e0e0e0;
+    }
+    button {
+      width: 100%;
+      margin-top: var(--space-m);
+      padding: 16px 18px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: var(--radius-m);
+      border: none;
+      background: #0b6ef6;
+      color: #fff;
+    }
+    button:active {
+      transform: translateY(1px);
+    }
+    #sendBtn {
+      background: #1f7a1f;
+    }
+    label {
+      display: block;
+      margin-top: var(--space-m);
+      font-size: 18px;
+    }
+    input[type="email"] {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px 14px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: 1px solid #cfcfcf;
+      background: #fff;
+    }
+    input[type="checkbox"] {
+      transform: scale(1.3);
+      margin-right: 8px;
     }
     #status {
-      margin-top: 1rem;
-      color: #cc0000;
+      margin-top: var(--space-m);
+      font-size: 16px;
+      color: #b00020;
     }
   </style>
 </head>
 <body>
-  <h1>名刺撮影</h1>
-  <div>
-    <video id="video" autoplay playsinline></video>
-  </div>
-  <button id="captureBtn">撮影</button>
-  <canvas id="canvas" style="display: none;"></canvas>
-  <div>
-    <h2>キャプチャ結果</h2>
-    <img id="photo" alt="キャプチャ画像" />
-  </div>
-  <div>
-    <label>抽出したメールアドレス: <input id="emailInput" type="email" /></label>
-  </div>
-  <div>
-    <label><input id="sendProfileToggle" type="checkbox" checked /> プロフィールを送信する</label>
-  </div>
-  <button id="sendBtn">プロフィール送信</button>
-  <div id="status"></div>
+  <main class="container">
+    <h1>名刺撮影</h1>
+    <div>
+      <video id="video" autoplay playsinline></video>
+    </div>
+    <button id="captureBtn">撮影</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div>
+      <h2>キャプチャ結果</h2>
+      <img id="photo" alt="キャプチャ画像" />
+    </div>
+    <div>
+      <label>抽出したメールアドレス:
+        <input id="emailInput" type="email" />
+      </label>
+    </div>
+    <div>
+      <label><input id="sendProfileToggle" type="checkbox" checked /> プロフィールを送信する</label>
+    </div>
+    <button id="sendBtn">プロフィール送信</button>
+    <div id="status"></div>
+  </main>
   <!-- Tesseract.js を CDN から読み込み -->
   <script src="https://unpkg.com/tesseract.js@2.1.4/dist/tesseract.min.js"></script>
   <!-- フロントエンドのメインスクリプト -->
