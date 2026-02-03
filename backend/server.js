@@ -7,20 +7,51 @@ const nodemailer = require('nodemailer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+const smtpSecure = String(process.env.SMTP_SECURE).toLowerCase() === 'true';
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS || '';
+const senderEmail = process.env.SENDER_EMAIL;
+const selfEmail = process.env.SELF_EMAIL;
+
 // SMTP check
-if (!process.env.SMTP_HOST) {
+if (!smtpHost) {
   console.warn('Warning: SMTP_HOST is not set. Emails will not be sent.');
 }
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: process.env.SMTP_USER
-    ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS || '',
-      }
-    : undefined,
+console.log('SMTP env present:', {
+  SMTP_HOST: !!smtpHost,
+  SMTP_PORT: !!smtpPort,
+  SMTP_SECURE: !!process.env.SMTP_SECURE,
+  SMTP_USER: !!smtpUser,
+  SMTP_PASS: !!smtpPass,
+  SENDER_EMAIL: !!senderEmail,
+  SELF_EMAIL: !!selfEmail,
 });
+
+const transporter = nodemailer.createTransport(
+  smtpHost
+    ? {
+        host: smtpHost,
+        port: smtpPort || 587,
+        secure: smtpSecure,
+        auth: smtpUser
+          ? {
+              user: smtpUser,
+              pass: smtpPass,
+            }
+          : undefined,
+      }
+    : {
+        service: 'gmail',
+        auth: smtpUser
+          ? {
+              user: smtpUser,
+              pass: smtpPass,
+            }
+          : undefined,
+      }
+);
 
 app.use(cors());
 // Accept JSON payloads up to 10MB (enough for small images)
@@ -42,7 +73,6 @@ app.post('/send', async (req, res) => {
     return res.status(400).json({ error: 'email is required when sending profile' });
   }
   // Prepare self email with attachment
-  const senderEmail = process.env.SENDER_EMAIL;
   const senderName = process.env.SENDER_NAME || 'Profile Exchange';
   const from = senderName ? `${senderName} <${senderEmail}>` : senderEmail;
   const isoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
@@ -72,7 +102,7 @@ app.post('/send', async (req, res) => {
   } : null;
   try {
     // Send self email first
-    if (process.env.SMTP_USER && senderEmail) {
+    if (smtpUser && senderEmail) {
       await transporter.sendMail(selfMsg);
       if (profileMsg) {
         await transporter.sendMail(profileMsg);
