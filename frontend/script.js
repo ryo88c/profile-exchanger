@@ -95,7 +95,7 @@ sendBtn.addEventListener('click', () => {
         timestamp: Date.now(),
         sendProfile: shouldSendProfile,
       };
-      fetch('http://localhost:3000/send', {
+      fetch('/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
