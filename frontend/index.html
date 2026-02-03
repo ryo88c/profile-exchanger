@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>プロフィール交換アプリ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+    }
+    video, img {
+      max-width: 100%;
+      height: auto;
+    }
+    #status {
+      margin-top: 1rem;
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <h1>名刺撮影</h1>
+  <div>
+    <video id="video" autoplay playsinline></video>
+  </div>
+  <button id="captureBtn">撮影</button>
+  <canvas id="canvas" style="display: none;"></canvas>
+  <div>
+    <h2>キャプチャ結果</h2>
+    <img id="photo" alt="キャプチャ画像" />
+  </div>
+  <div>
+    <label>抽出したメールアドレス: <input id="emailInput" type="email" /></label>
+  </div>
+  <div>
+    <label><input id="sendProfileToggle" type="checkbox" checked /> プロフィールを送信する</label>
+  </div>
+  <button id="sendBtn">プロフィール送信</button>
+  <div id="status"></div>
+  <!-- Tesseract.js を CDN から読み込み -->
+  <script src="https://unpkg.com/tesseract.js@2.1.4/dist/tesseract.min.js"></script>
+  <!-- フロントエンドのメインスクリプト -->
+  <script src="script.js"></script>
+</body>
+</html>
