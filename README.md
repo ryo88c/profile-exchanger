@@ -33,6 +33,20 @@
 
    ブラウザを開くとカメラアクセスの許可が求められます。名刺を撮影し、メールアドレスが抽出されたら「プロフィール送信」ボタンで送信処理を行います。
 
+## Railway デプロイ手順
+
+1. Railway で新規プロジェクトを作成し、GitHub の `ryo88c/profile-exchanger` を接続します。
+2. ルートに `railway.json` があるため、Build/Start コマンドは自動設定されます。
+3. Railway の Variables に以下を設定します。
+   - `SMTP_USER`
+   - `SMTP_PASS`
+   - `SENDER_EMAIL`
+   - `SENDER_NAME`（任意）
+   - `SELF_EMAIL`
+   - `PORT`
+4. Settings → Networking で `Generate Domain` を実行します。
+5. 発行された HTTPS の URL にアクセスします。
+
 ## 今後の実装例
 
 * スタイリングの追加や日本語 OCR の精度向上。
