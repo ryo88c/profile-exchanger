@@ -2,56 +2,23 @@ require('dotenv').config();
 const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
-const smtpSecure = String(process.env.SMTP_SECURE).toLowerCase() === 'true';
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS || '';
-const senderEmail = process.env.SENDER_EMAIL;
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFrom = process.env.RESEND_FROM;
 const selfEmail = process.env.SELF_EMAIL;
 
-// SMTP check
-if (!smtpHost) {
-  console.warn('Warning: SMTP_HOST is not set. Emails will not be sent.');
+if (!resendApiKey) {
+  console.warn('Warning: RESEND_API_KEY is not set. Emails will not be sent.');
 }
-console.log('SMTP env present:', {
-  SMTP_HOST: !!smtpHost,
-  SMTP_PORT: !!smtpPort,
-  SMTP_SECURE: !!process.env.SMTP_SECURE,
-  SMTP_USER: !!smtpUser,
-  SMTP_PASS: !!smtpPass,
-  SENDER_EMAIL: !!senderEmail,
-  SELF_EMAIL: !!selfEmail,
-});
+if (!resendFrom) {
+  console.warn('Warning: RESEND_FROM is not set.');
+}
 
-const transporter = nodemailer.createTransport(
-  smtpHost
-    ? {
-        host: smtpHost,
-        port: smtpPort || 587,
-        secure: smtpSecure,
-        auth: smtpUser
-          ? {
-              user: smtpUser,
-              pass: smtpPass,
-            }
-          : undefined,
-      }
-    : {
-        service: 'gmail',
-        auth: smtpUser
-          ? {
-              user: smtpUser,
-              pass: smtpPass,
-            }
-          : undefined,
-      }
-);
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 app.use(cors());
 // Accept JSON payloads up to 10MB (enough for small images)
@@ -74,12 +41,12 @@ app.post('/send', async (req, res) => {
   }
   // Prepare self email with attachment
   const senderName = process.env.SENDER_NAME || 'Profile Exchange';
-  const from = senderName ? `${senderName} <${senderEmail}>` : senderEmail;
+  const from = senderName ? `${senderName} <${resendFrom}>` : resendFrom;
   const isoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
   const base64Image = image.split(',')[1];
   const selfMsg = {
     from,
-    to: process.env.SELF_EMAIL,
+    to: selfEmail,
     subject: '名刺交換の記録',
     text: `名刺交換の記録です。撮影日時: ${isoTime} 位置: (${latitude}, ${longitude})`,
     html: `<p>名刺交換の記録です。</p><p>撮影日時: ${isoTime}</p><p>位置: (${latitude}, ${longitude})</p>`,
@@ -87,8 +54,6 @@ app.post('/send', async (req, res) => {
       {
         filename: 'business_card.png',
         content: base64Image,
-        encoding: 'base64',
-        contentType: 'image/png',
       },
     ],
   };
@@ -101,17 +66,23 @@ app.post('/send', async (req, res) => {
     html: '<p>名刺交換ありがとうございます。こちらが私のプロフィールです。</p>',
   } : null;
   try {
-    // Send self email first
-    if (smtpUser && senderEmail) {
-      await transporter.sendMail(selfMsg);
-      if (profileMsg) {
-        await transporter.sendMail(profileMsg);
-      }
-      res.json({ message: 'メール送信が完了しました' });
-    } else {
-      console.log('SMTP settings are not set; skipping email send.');
+    if (!resend || !from || !selfEmail) {
+      console.log('Resend settings are not set; skipping email send.');
       res.json({ message: 'メール送信 (ダミー) が完了しました' });
+      return;
     }
+
+    const selfResult = await resend.emails.send(selfMsg);
+    if (selfResult.error) {
+      throw new Error(selfResult.error.message || 'Resend error');
+    }
+    if (profileMsg) {
+      const profileResult = await resend.emails.send(profileMsg);
+      if (profileResult.error) {
+        throw new Error(profileResult.error.message || 'Resend error');
+      }
+    }
+    res.json({ message: 'メール送信が完了しました' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'メール送信に失敗しました' });

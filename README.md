@@ -11,12 +11,8 @@
 ## セットアップ方法
 
 1. `backend/.env.example` をコピーして `.env` を作成し、以下の値を設定してください。
-   - `SMTP_HOST`: SMTP ホスト。
-   - `SMTP_PORT`: SMTP ポート（例: 587）。
-   - `SMTP_SECURE`: `true` または `false`（TLS を使う場合は `true`）。
-   - `SMTP_USER`: SMTP ユーザー名。
-   - `SMTP_PASS`: SMTP パスワード。
-   - `SENDER_EMAIL`: 送信元メールアドレス。
+   - `RESEND_API_KEY`: Resend の API キー。
+   - `RESEND_FROM`: Resend で認証済みの送信元メールアドレス。
    - `SENDER_NAME`: 送信者名（任意）。
    - `SELF_EMAIL`: 自分宛てメールアドレス（名刺画像付きメールを受信したいアドレス）。
    - `PORT`: サーバーポート（任意、デフォルトは 3000）。
@@ -38,9 +34,8 @@
 1. Railway で新規プロジェクトを作成し、GitHub の `ryo88c/profile-exchanger` を接続します。
 2. ルートに `railway.json` があるため、Build/Start コマンドは自動設定されます。
 3. Railway の Variables に以下を設定します。
-   - `SMTP_USER`
-   - `SMTP_PASS`
-   - `SENDER_EMAIL`
+   - `RESEND_API_KEY`
+   - `RESEND_FROM`
    - `SENDER_NAME`（任意）
    - `SELF_EMAIL`
    - `PORT`
