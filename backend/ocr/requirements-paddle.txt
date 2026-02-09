@@ -1,0 +1,4 @@
+paddleocr>=2.9.0
+# Choose a paddlepaddle build that matches your environment.
+# CPU example:
+# paddlepaddle>=3.0.0

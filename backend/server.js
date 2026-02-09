@@ -4,9 +4,11 @@ const express = require('express');
 const cors = require('cors');
 const { Resend } = require('resend');
 const { buildProfileMessage } = require('./lib/profile-mail');
+const { runOcr, extractEmail } = require('./lib/ocr');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM;
@@ -30,8 +32,29 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.resolve(__dirname, '../frontend')));
 
 // Health check endpoint
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Endpoint for OCR PoC
+app.post('/ocr', async (req, res) => {
+  const { image } = req.body;
+  if (!image) {
+    return res.status(400).json({ error: 'image is required' });
+  }
+
+  try {
+    const text = await runOcr(image);
+    const email = extractEmail(text);
+    res.json({ text, email });
+  } catch (err) {
+    const isTimeout = Boolean(err && err.isTimeout);
+    const code = err && err.code ? err.code : 'OCR_FAILED';
+    const errorMessage = isTimeout
+      ? 'OCRに失敗しました: タイムアウトしました'
+      : `OCRに失敗しました: ${err.message}`;
+    res.status(400).json({ error: errorMessage, code, isTimeout });
+  }
 });
 
 // Endpoint to receive image and metadata and send emails
@@ -95,6 +118,6 @@ app.post('/send', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
 });

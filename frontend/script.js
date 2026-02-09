@@ -6,6 +6,7 @@ const emailInput = document.getElementById('emailInput');
 const sendProfileToggle = document.getElementById('sendProfileToggle');
 const statusDiv = document.getElementById('status');
 const sendBtn = document.getElementById('sendBtn');
+const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 
 function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -25,8 +26,38 @@ function startCamera() {
 
 startCamera();
 
+function extractEmail(text) {
+  const match = String(text || '').match(EMAIL_PATTERN);
+  return match ? match[0] : '';
+}
+
+async function runBackendOcr(dataURL) {
+  const response = await fetch('/ocr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataURL }),
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.error) {
+    throw new Error(payload.error || 'バックエンドOCRに失敗しました');
+  }
+  return payload;
+}
+
+async function runBrowserOcr(dataURL) {
+  const result = await Tesseract.recognize(
+    dataURL,
+    'eng+jpn',
+    { logger: (m) => console.log(m) }
+  );
+  return {
+    text: result.data?.text || '',
+    email: extractEmail(result.data?.text || ''),
+  };
+}
+
 // 撮影ボタンの処理
-document.getElementById('captureBtn').addEventListener('click', () => {
+document.getElementById('captureBtn').addEventListener('click', async () => {
   if (!video.videoWidth) {
     statusDiv.textContent = 'カメラ映像の準備ができていません';
     return;
@@ -39,26 +70,32 @@ document.getElementById('captureBtn').addEventListener('click', () => {
   ctx.drawImage(video, 0, 0, width, height);
   const dataURL = canvas.toDataURL('image/png');
   photo.src = dataURL;
-  // OCR の実行
   statusDiv.style.color = '#000';
   statusDiv.textContent = 'OCR解析中...';
-  Tesseract.recognize(
-    dataURL,
-    'eng+jpn',
-    { logger: (m) => console.log(m) }
-  ).then(({ data: { text } }) => {
-    statusDiv.textContent = 'OCR完了';
-    // メールアドレス抽出用の正規表現
-    const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    if (match) {
-      emailInput.value = match[0];
-      statusDiv.textContent = 'メールアドレスを抽出しました。';
+
+  try {
+    const backendResult = await runBackendOcr(dataURL);
+    if (backendResult.email) {
+      emailInput.value = backendResult.email;
+      statusDiv.textContent = 'メールアドレスを抽出しました。（バックエンドOCR）';
+      return;
+    }
+    statusDiv.textContent = 'バックエンドOCRでメール抽出できませんでした。ローカルOCRで再試行します...';
+  } catch (err) {
+    statusDiv.textContent = `バックエンドOCR失敗: ${err.message} ローカルOCRで再試行します...`;
+  }
+
+  try {
+    const browserResult = await runBrowserOcr(dataURL);
+    if (browserResult.email) {
+      emailInput.value = browserResult.email;
+      statusDiv.textContent = 'メールアドレスを抽出しました。（ローカルOCR）';
     } else {
       statusDiv.textContent = 'メールアドレスが見つかりませんでした。手動で入力してください。';
     }
-  }).catch((err) => {
+  } catch (err) {
     statusDiv.textContent = `OCRエラー: ${err.message}`;
-  });
+  }
 });
 
 function updateSendButtonLabel() {

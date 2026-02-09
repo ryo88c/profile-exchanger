@@ -30,6 +30,54 @@
 
    ブラウザを開くとカメラアクセスの許可が求められます。名刺を撮影し、メールアドレスが抽出されたら「プロフィール送信」ボタンで送信処理を行います。
 
+## ローカル + ngrok でスマホ検証
+
+1. `backend/.env` に以下を設定します。
+   - `HOST=0.0.0.0`
+   - `PORT=3000`（必要なら変更）
+2. サーバーを起動します。
+   - `npm start --prefix backend`
+3. 別ターミナルで ngrok を起動します。
+   - `ngrok http 3000`
+4. ngrok が表示する `https://...` URL をスマホで開きます。
+
+補足:
+- スマホのカメラ/位置情報は HTTPS でのみ許可されるため、ngrok URL を使用してください。
+- フロントとAPIは同一オリジンで配信されるため、追加のCORS設定は不要です。
+- サーバーヘルスチェックは `GET /health` です。
+
+## OCR PoC（差し替え可能な構成）
+
+- フロントはまず `POST /ocr` を呼び、失敗時のみブラウザ内 Tesseract.js にフォールバックします。
+- `.env` でOCRプロバイダを切り替えます。
+  - `OCR_PROVIDER=disabled`: バックエンドOCRを無効化（従来どおりローカルOCR）
+  - `OCR_PROVIDER=command`: 外部コマンド実行でOCR
+- `OCR_COMMAND`:
+  - 外部OCRコマンド。`{input}` は一時画像ファイルパスに置換されます。
+  - 例: `python3 ./ocr/paddle_ocr_wrapper.py --lang en {input}`
+- `OCR_COMMAND_CWD`:
+  - OCRコマンドを実行する作業ディレクトリ（未指定時は `backend/`）
+- `OCR_COMMAND_TIMEOUT_MS`: コマンド実行タイムアウト（ミリ秒）
+- `OCR_ERROR_LOG_PATH`:
+  - OCR失敗ログの出力先（JSON Lines）。未指定時は `backend/logs/ocr-errors.log`
+
+### PaddleOCR を使う場合
+
+1. Python 仮想環境を作成し、依存関係を入れます。
+   - `python3 -m venv .venv`
+   - `source .venv/bin/activate`
+   - `pip install -r backend/ocr/requirements-paddle.txt`
+   - 環境に合う `paddlepaddle` を別途インストールしてください（CPU/GPUに応じて）
+2. `backend/.env` を設定します。
+   - `OCR_PROVIDER=command`
+   - `OCR_COMMAND=python3 ./ocr/paddle_ocr_wrapper.py --lang en {input}`
+   - 必要なら `OCR_COMMAND_TIMEOUT_MS=60000`
+3. サーバーを再起動して動作確認します。
+
+補足:
+- `POST /ocr` の失敗時レスポンスには `code` と `isTimeout` が含まれます。
+- コマンド失敗時は `stderr/stdout/exitCode/isTimeout` が `OCR_ERROR_LOG_PATH` に追記されます。
+
 ## Railway デプロイ手順
 
 1. Railway で新規プロジェクトを作成し、GitHub の `ryo88c/profile-exchanger` を接続します。
@@ -69,7 +117,9 @@
   - バックエンドのみ: `npm test --prefix backend`
 - テスト基盤:
   - Node.js標準の `node:test` を使用（追加ライブラリ不要）
-  - 対象ファイル: `backend/test/profile-mail.test.js`
+- 対象ファイル:
+  - `backend/test/profile-mail.test.js`
+  - `backend/test/ocr.test.js`
 - 現在のテスト観点:
   - `.env` の `PROFILE_*` が設定JSONより優先されること
   - `PROFILE_*` 未設定時に空文字になり、エラーにならないこと
@@ -77,6 +127,8 @@
   - 危険タグ（`script` 等）でエラーになること
   - `htmlMode=fallback` 時に `fallback.html` を使うこと
   - CID添付が `inlineAttachments` から組み立てられること
+  - OCRメール抽出ロジックが期待通りであること
+  - バックエンドOCRの `command` プロバイダが動作すること
 
 ## 今後の実装例
 
