@@ -3,6 +3,7 @@ const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
 const { Resend } = require('resend');
+const { buildProfileMessage } = require('./lib/profile-mail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +11,9 @@ const PORT = process.env.PORT || 3000;
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM;
 const selfEmail = process.env.SELF_EMAIL;
+const profileMailConfigPath = process.env.PROFILE_MAIL_CONFIG
+  ? path.resolve(process.env.PROFILE_MAIL_CONFIG)
+  : path.resolve(__dirname, 'user-mail/profile-mail.config.json');
 
 if (!resendApiKey) {
   console.warn('Warning: RESEND_API_KEY is not set. Emails will not be sent.');
@@ -57,15 +61,17 @@ app.post('/send', async (req, res) => {
       },
     ],
   };
-  // Prepare profile email to contact
-  const profileMsg = sendProfile ? {
-    from,
-    to: email,
-    subject: 'プロフィール交換のお知らせ',
-    text: '名刺交換ありがとうございます。こちらが私のプロフィールです。',
-    html: '<p>名刺交換ありがとうございます。こちらが私のプロフィールです。</p>',
-  } : null;
   try {
+    const profileMsg = sendProfile ? await buildProfileMessage({
+      from,
+      recipientEmail: email,
+      senderName,
+      latitude,
+      longitude,
+      isoTime,
+      profileMailConfigPath,
+    }) : null;
+
     if (!resend || !from || !selfEmail) {
       console.log('Resend settings are not set; skipping email send.');
       res.json({ message: 'メール送信 (ダミー) が完了しました' });
@@ -85,7 +91,7 @@ app.post('/send', async (req, res) => {
     res.json({ message: 'メール送信が完了しました' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'メール送信に失敗しました' });
+    res.status(500).json({ error: `メール送信に失敗しました: ${err.message}` });
   }
 });
 

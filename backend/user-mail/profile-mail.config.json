@@ -1,0 +1,27 @@
+{
+  "htmlMode": "raw",
+  "templatePath": "./profile-email.html",
+  "profile": {
+    "subject": "プロフィール交換のお知らせ - {{name}}",
+    "text": "名刺交換ありがとうございます。こちらが私のプロフィールです。\n\n{{name}}\n{{title}}\n{{company}}\nEmail: {{email}}\nPhone: {{phone}}\nWebsite: {{website}}",
+    "name": "山田 太郎",
+    "title": "Product Engineer",
+    "company": "Example Inc.",
+    "email": "taro@example.com",
+    "phone": "+81-90-1234-5678",
+    "website": "https://example.com"
+  },
+  "inlineAttachments": [
+    {
+      "cid": "profile-photo",
+      "path": "./assets/profile-photo.png",
+      "filename": "profile-photo.png",
+      "contentType": "image/png"
+    }
+  ],
+  "fallback": {
+    "subject": "プロフィール交換のお知らせ - {{name}}",
+    "text": "名刺交換ありがとうございます。こちらが私のプロフィールです。\n\n{{name}}\n{{title}}\n{{company}}\nEmail: {{email}}\nPhone: {{phone}}\nWebsite: {{website}}",
+    "html": "<p>名刺交換ありがとうございます。こちらが私のプロフィールです。</p><p><strong>{{name}}</strong><br>{{title}} / {{company}}<br>Email: {{email}}<br>Phone: {{phone}}<br>Website: {{website}}</p>"
+  }
+}
