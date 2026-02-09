@@ -11,14 +11,7 @@
     "phone": "+81-90-1234-5678",
     "website": "https://example.com"
   },
-  "inlineAttachments": [
-    {
-      "cid": "profile-photo",
-      "path": "./assets/profile-photo.png",
-      "filename": "profile-photo.png",
-      "contentType": "image/png"
-    }
-  ],
+  "inlineAttachments": [],
   "fallback": {
     "subject": "プロフィール交換のお知らせ - {{name}}",
     "text": "名刺交換ありがとうございます。こちらが私のプロフィールです。\n\n{{name}}\n{{title}}\n{{company}}\nEmail: {{email}}\nPhone: {{phone}}\nWebsite: {{website}}",

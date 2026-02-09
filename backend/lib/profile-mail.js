@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const FORBIDDEN_TAG_PATTERN = /<\s*(script|iframe|object|embed|form)\b/i;
 const PLACEHOLDER_PATTERN = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
+const CONDITIONAL_PATTERN = /{{#if\s+([a-zA-Z0-9_]+)}}([\s\S]*?){{\/if}}/g;
 const ALLOWED_TEMPLATE_KEYS = new Set([
   'name',
   'title',
@@ -10,6 +11,7 @@ const ALLOWED_TEMPLATE_KEYS = new Set([
   'email',
   'phone',
   'website',
+  'profile_image_url',
   'recipient_email',
   'captured_at',
   'location_name',
@@ -25,6 +27,7 @@ const PROFILE_ENV_MAP = {
   email: 'PROFILE_EMAIL',
   phone: 'PROFILE_PHONE',
   website: 'PROFILE_WEBSITE',
+  profile_image_url: 'PROFILE_IMAGE_URL',
 };
 const DEFAULT_PROFILE_SUBJECT = 'プロフィール交換のお知らせ';
 const DEFAULT_PROFILE_TEXT = '名刺交換ありがとうございます。こちらが私のプロフィールです。';
@@ -66,6 +69,19 @@ function renderPlaceholders(template, variables, sourceLabel, options = {}) {
   });
 }
 
+function hasVisibleValue(value) {
+  return String(value ?? '').trim().length > 0;
+}
+
+function renderConditionals(template, variables, sourceLabel) {
+  return template.replace(CONDITIONAL_PATTERN, (_, key, inner) => {
+    if (!ALLOWED_TEMPLATE_KEYS.has(key)) {
+      throw new Error(`${sourceLabel} uses unsupported conditional key: {{#if ${key}}}`);
+    }
+    return hasVisibleValue(variables[key]) ? inner : '';
+  });
+}
+
 function toDisplayValue(value) {
   return value == null ? '' : String(value);
 }
@@ -75,7 +91,18 @@ function getProfileValue(key, profileInfo, env) {
   if (envKey && env[envKey] != null) {
     return env[envKey];
   }
+  if (key === 'profile_image_url') {
+    return profileInfo.imageUrl;
+  }
   return profileInfo[key];
+}
+
+function getEnvProfileValue(key, env) {
+  const envKey = PROFILE_ENV_MAP[key];
+  if (!envKey) {
+    return '';
+  }
+  return env[envKey] ?? '';
 }
 
 async function loadProfileMailConfig(profileMailConfigPath) {
@@ -123,9 +150,7 @@ async function buildProfileMessage({
   const config = await loadProfileMailConfig(profileMailConfigPath);
   const configDir = path.dirname(profileMailConfigPath);
   const locationNameText = toDisplayValue(locationName);
-  const locationText = locationNameText
-    ? `${locationNameText} (${toDisplayValue(latitude)}, ${toDisplayValue(longitude)})`
-    : `(${toDisplayValue(latitude)}, ${toDisplayValue(longitude)})`;
+  const locationText = locationNameText;
   const profileInfo = config.profile || {};
   const variables = {
     name: toDisplayValue(getProfileValue('name', profileInfo, env)),
@@ -134,6 +159,7 @@ async function buildProfileMessage({
     email: toDisplayValue(getProfileValue('email', profileInfo, env)),
     phone: toDisplayValue(getProfileValue('phone', profileInfo, env)),
     website: toDisplayValue(getProfileValue('website', profileInfo, env)),
+    profile_image_url: toDisplayValue(getProfileValue('profile_image_url', profileInfo, env)),
     recipient_email: toDisplayValue(recipientEmail),
     captured_at: isoTime,
     location_name: locationNameText,
@@ -141,6 +167,16 @@ async function buildProfileMessage({
     latitude: toDisplayValue(latitude),
     longitude: toDisplayValue(longitude),
     sender_name: toDisplayValue(senderName),
+  };
+  const htmlVariables = {
+    ...variables,
+    name: toDisplayValue(getEnvProfileValue('name', env)),
+    title: toDisplayValue(getEnvProfileValue('title', env)),
+    company: toDisplayValue(getEnvProfileValue('company', env)),
+    email: toDisplayValue(getEnvProfileValue('email', env)),
+    phone: toDisplayValue(getEnvProfileValue('phone', env)),
+    website: toDisplayValue(getEnvProfileValue('website', env)),
+    profile_image_url: toDisplayValue(getEnvProfileValue('profile_image_url', env)),
   };
 
   const fallback = config.fallback || {};
@@ -164,7 +200,8 @@ async function buildProfileMessage({
   }
 
   assertNoForbiddenTags(htmlTemplate, useFallback ? 'fallback.html' : 'templatePath html');
-  const html = renderPlaceholders(htmlTemplate, variables, 'profile html', { htmlEscapeValues: true });
+  const conditionalHtmlTemplate = renderConditionals(htmlTemplate, htmlVariables, 'profile html');
+  const html = renderPlaceholders(conditionalHtmlTemplate, htmlVariables, 'profile html', { htmlEscapeValues: true });
   const subject = renderPlaceholders(subjectTemplate, variables, 'profile subject');
   const text = renderPlaceholders(textTemplate, variables, 'profile text');
   const attachments = await loadInlineAttachments(configDir, config.inlineAttachments);

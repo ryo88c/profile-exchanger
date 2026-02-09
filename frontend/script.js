@@ -2,11 +2,15 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const photo = document.getElementById('photo');
+const emailSection = document.getElementById('emailSection');
 const emailInput = document.getElementById('emailInput');
+const profileOptionSection = document.getElementById('profileOptionSection');
 const sendProfileToggle = document.getElementById('sendProfileToggle');
 const statusDiv = document.getElementById('status');
 const sendBtn = document.getElementById('sendBtn');
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+const captureBtn = document.getElementById('captureBtn');
+let isCaptured = false;
 
 function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -56,8 +60,49 @@ async function runBrowserOcr(dataURL) {
   };
 }
 
+function switchToCapturedPreview() {
+  isCaptured = true;
+  video.classList.add('hidden');
+  photo.classList.remove('hidden');
+  sendBtn.classList.remove('hidden');
+  captureBtn.textContent = '再撮影';
+  captureBtn.classList.add('capture-ready');
+}
+
+function switchToCameraPreview() {
+  isCaptured = false;
+  photo.classList.add('hidden');
+  video.classList.remove('hidden');
+  sendBtn.classList.add('hidden');
+  captureBtn.textContent = '撮影';
+  captureBtn.classList.remove('capture-ready');
+  statusDiv.style.color = '#000';
+  statusDiv.textContent = '';
+  emailSection.classList.add('hidden');
+  profileOptionSection.classList.add('hidden');
+  sendProfileToggle.checked = false;
+}
+
+function updateProfileOptionVisibility() {
+  const hasEmail = emailInput.value.trim().length > 0;
+  if (hasEmail) {
+    if (profileOptionSection.classList.contains('hidden')) {
+      sendProfileToggle.checked = true;
+    }
+    profileOptionSection.classList.remove('hidden');
+    return;
+  }
+  profileOptionSection.classList.add('hidden');
+  sendProfileToggle.checked = false;
+}
+
 // 撮影ボタンの処理
-document.getElementById('captureBtn').addEventListener('click', async () => {
+captureBtn.addEventListener('click', async () => {
+  if (isCaptured) {
+    switchToCameraPreview();
+    return;
+  }
+
   if (!video.videoWidth) {
     statusDiv.textContent = 'カメラ映像の準備ができていません';
     return;
@@ -70,16 +115,24 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
   ctx.drawImage(video, 0, 0, width, height);
   const dataURL = canvas.toDataURL('image/png');
   photo.src = dataURL;
+  switchToCapturedPreview();
+  emailSection.classList.add('hidden');
+  profileOptionSection.classList.add('hidden');
+  sendProfileToggle.checked = false;
+  emailInput.value = '';
   statusDiv.style.color = '#000';
   statusDiv.textContent = 'OCR解析中...';
 
   try {
     const backendResult = await runBackendOcr(dataURL);
+    emailSection.classList.remove('hidden');
     if (backendResult.email) {
       emailInput.value = backendResult.email;
+      updateProfileOptionVisibility();
       statusDiv.textContent = 'メールアドレスを抽出しました。（バックエンドOCR）';
       return;
     }
+    updateProfileOptionVisibility();
     statusDiv.textContent = 'バックエンドOCRでメール抽出できませんでした。ローカルOCRで再試行します...';
   } catch (err) {
     statusDiv.textContent = `バックエンドOCR失敗: ${err.message} ローカルOCRで再試行します...`;
@@ -87,23 +140,23 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
 
   try {
     const browserResult = await runBrowserOcr(dataURL);
+    emailSection.classList.remove('hidden');
     if (browserResult.email) {
       emailInput.value = browserResult.email;
+      updateProfileOptionVisibility();
       statusDiv.textContent = 'メールアドレスを抽出しました。（ローカルOCR）';
     } else {
+      updateProfileOptionVisibility();
       statusDiv.textContent = 'メールアドレスが見つかりませんでした。手動で入力してください。';
     }
   } catch (err) {
+    emailSection.classList.remove('hidden');
+    updateProfileOptionVisibility();
     statusDiv.textContent = `OCRエラー: ${err.message}`;
   }
 });
 
-function updateSendButtonLabel() {
-  sendBtn.textContent = sendProfileToggle.checked ? 'プロフィール送信' : '記録送信';
-}
-
-sendProfileToggle.addEventListener('change', updateSendButtonLabel);
-updateSendButtonLabel();
+emailInput.addEventListener('input', updateProfileOptionVisibility);
 
 // 送信ボタンの処理
 sendBtn.addEventListener('click', () => {

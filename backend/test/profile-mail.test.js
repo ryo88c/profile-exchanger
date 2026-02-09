@@ -153,10 +153,38 @@ test('fallback mode uses fallback.html when configured', async () => {
     longitude: 139.0,
     isoTime: '2026-02-09T00:00:00.000Z',
     profileMailConfigPath: configPath,
-    env: {},
+    env: { PROFILE_NAME: 'Config Name' },
   });
 
   assert.equal(msg.subject, 'fallback subject Config Name');
   assert.equal(msg.text, 'fallback text Config Name');
   assert.match(msg.html, /fallback Config Name/);
+});
+
+test('html conditionals hide profile fields when PROFILE_* env is not set', async () => {
+  const configPath = await createFixture({
+    htmlMode: 'raw',
+    templatePath: 'profile-email.html',
+    templateBody: '{{#if name}}<p>{{name}}</p>{{/if}}{{#if email}}<p>{{email}}</p>{{/if}}',
+    profile: {
+      subject: 's',
+      text: 't',
+      name: 'Config Name',
+      email: 'config@example.com',
+    },
+  });
+
+  const msg = await buildProfileMessage({
+    from: 'Tester <tester@example.com>',
+    recipientEmail: 'to@example.com',
+    senderName: 'Tester',
+    latitude: 35.0,
+    longitude: 139.0,
+    locationName: 'Chiyoda City, Japan',
+    isoTime: '2026-02-09T00:00:00.000Z',
+    profileMailConfigPath: configPath,
+    env: {},
+  });
+
+  assert.equal(msg.html, '');
 });

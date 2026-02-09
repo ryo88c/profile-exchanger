@@ -6,6 +6,7 @@ const { Resend } = require('resend');
 const { buildProfileMessage } = require('./lib/profile-mail');
 const { runOcr, extractEmail } = require('./lib/ocr');
 const { reverseGeocode } = require('./lib/geocode');
+const { formatDateTime } = require('./lib/datetime');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,29 +68,31 @@ app.post('/send', async (req, res) => {
   if (sendProfile && !email) {
     return res.status(400).json({ error: 'email is required when sending profile' });
   }
-  // Prepare self email with attachment
-  const senderName = process.env.SENDER_NAME || 'Profile Exchange';
-  const from = senderName ? `${senderName} <${resendFrom}>` : resendFrom;
-  const isoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
-  const locationName = await reverseGeocode(latitude, longitude);
-  const locationText = locationName
-    ? `${locationName} (${latitude}, ${longitude})`
-    : `(${latitude}, ${longitude})`;
-  const base64Image = image.split(',')[1];
-  const selfMsg = {
-    from,
-    to: selfEmail,
-    subject: '名刺交換の記録',
-    text: `名刺交換の記録です。撮影日時: ${isoTime} 位置: ${locationText}`,
-    html: `<p>名刺交換の記録です。</p><p>撮影日時: ${isoTime}</p><p>位置: ${locationText}</p>`,
-    attachments: [
-      {
-        filename: 'business_card.png',
-        content: base64Image,
-      },
-    ],
-  };
   try {
+    // Prepare self email with attachment
+    const senderName = process.env.SENDER_NAME || 'Profile Exchange';
+    const from = senderName ? `${senderName} <${resendFrom}>` : resendFrom;
+    const capturedAt = timestamp || Date.now();
+    const formattedTime = formatDateTime(capturedAt, process.env);
+    const locationName = await reverseGeocode(latitude, longitude);
+    const locationText = locationName
+      ? `${locationName} (${latitude}, ${longitude})`
+      : `(${latitude}, ${longitude})`;
+    const base64Image = image.split(',')[1];
+    const selfMsg = {
+      from,
+      to: selfEmail,
+      subject: '名刺交換の記録',
+      text: `名刺交換の記録です。撮影日時: ${formattedTime} 位置: ${locationText}`,
+      html: `<p>名刺交換の記録です。</p><p>撮影日時: ${formattedTime}</p><p>位置: ${locationText}</p>`,
+      attachments: [
+        {
+          filename: 'business_card.png',
+          content: base64Image,
+        },
+      ],
+    };
+
     const profileMsg = sendProfile ? await buildProfileMessage({
       from,
       recipientEmail: email,
@@ -97,7 +100,7 @@ app.post('/send', async (req, res) => {
       latitude,
       longitude,
       locationName,
-      isoTime,
+      isoTime: formattedTime,
       profileMailConfigPath,
     }) : null;
 
