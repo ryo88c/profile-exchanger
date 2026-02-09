@@ -5,6 +5,7 @@ const cors = require('cors');
 const { Resend } = require('resend');
 const { buildProfileMessage } = require('./lib/profile-mail');
 const { runOcr, extractEmail } = require('./lib/ocr');
+const { reverseGeocode } = require('./lib/geocode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,13 +71,17 @@ app.post('/send', async (req, res) => {
   const senderName = process.env.SENDER_NAME || 'Profile Exchange';
   const from = senderName ? `${senderName} <${resendFrom}>` : resendFrom;
   const isoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+  const locationName = await reverseGeocode(latitude, longitude);
+  const locationText = locationName
+    ? `${locationName} (${latitude}, ${longitude})`
+    : `(${latitude}, ${longitude})`;
   const base64Image = image.split(',')[1];
   const selfMsg = {
     from,
     to: selfEmail,
     subject: '名刺交換の記録',
-    text: `名刺交換の記録です。撮影日時: ${isoTime} 位置: (${latitude}, ${longitude})`,
-    html: `<p>名刺交換の記録です。</p><p>撮影日時: ${isoTime}</p><p>位置: (${latitude}, ${longitude})</p>`,
+    text: `名刺交換の記録です。撮影日時: ${isoTime} 位置: ${locationText}`,
+    html: `<p>名刺交換の記録です。</p><p>撮影日時: ${isoTime}</p><p>位置: ${locationText}</p>`,
     attachments: [
       {
         filename: 'business_card.png',
@@ -91,6 +96,7 @@ app.post('/send', async (req, res) => {
       senderName,
       latitude,
       longitude,
+      locationName,
       isoTime,
       profileMailConfigPath,
     }) : null;

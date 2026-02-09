@@ -60,6 +60,13 @@
 - `OCR_COMMAND_TIMEOUT_MS`: コマンド実行タイムアウト（ミリ秒）
 - `OCR_ERROR_LOG_PATH`:
   - OCR失敗ログの出力先（JSON Lines）。未指定時は `backend/logs/ocr-errors.log`
+- 逆ジオコーディング（Nominatim）:
+  - `REVERSE_GEOCODE_ENDPOINT`: 既定 `https://nominatim.openstreetmap.org/reverse`
+  - `REVERSE_GEOCODE_USER_AGENT`: 連絡先つき User-Agent を推奨
+  - `REVERSE_GEOCODE_TIMEOUT_MS`: 既定 `5000`
+  - `REVERSE_GEOCODE_CACHE_TTL_MS`: 既定 `86400000`（24時間）
+  - `REVERSE_GEOCODE_CACHE_MAX_ENTRIES`: 既定 `500`
+  - `REVERSE_GEOCODE_LANGUAGE`: 既定 `ja,en`
 
 ### PaddleOCR を使う場合
 
@@ -77,6 +84,7 @@
 補足:
 - `POST /ocr` の失敗時レスポンスには `code` と `isTimeout` が含まれます。
 - コマンド失敗時は `stderr/stdout/exitCode/isTimeout` が `OCR_ERROR_LOG_PATH` に追記されます。
+- `POST /send` では緯度経度から地名を逆引きし、メール本文の位置情報に追記します（失敗時は緯度経度のみ）。
 
 ## Railway デプロイ手順
 
@@ -102,13 +110,16 @@
   - `fallback`: 設定ファイル内 `fallback.html` を送信
 - 固定プレースホルダー（これ以外はエラー）:
   - `{{name}}`, `{{title}}`, `{{company}}`, `{{email}}`, `{{phone}}`, `{{website}}`
-  - `{{recipient_email}}`, `{{captured_at}}`, `{{location_text}}`, `{{latitude}}`, `{{longitude}}`, `{{sender_name}}`
+  - `{{recipient_email}}`, `{{captured_at}}`, `{{location_name}}`, `{{location_text}}`, `{{latitude}}`, `{{longitude}}`, `{{sender_name}}`
 - `{{name}}` などプロフィール値は `.env` の `PROFILE_*` が優先され、未設定時は `profile-mail.config.json` の `profile` を使用
 - 危険タグはエラーで送信中断:
   - `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`
 - CID添付:
   - `inlineAttachments` に `cid` と `path` を指定
   - HTML 側では `src="cid:your-cid"` で参照
+- Nominatim 公開APIを使う場合:
+  - 低頻度利用を前提にしてください（本アプリ想定では問題になりにくい）
+  - User-Agent は連絡先を含む値に設定してください
 
 ## テスト環境とテスト設計
 

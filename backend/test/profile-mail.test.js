@@ -28,7 +28,7 @@ test('raw mode: env values override config and CID attachment is included', asyn
   const configPath = await createFixture({
     htmlMode: 'raw',
     templatePath: 'profile-email.html',
-    templateBody: '<p>{{name}}</p><img src="cid:profile-photo">',
+    templateBody: '<p>{{name}}</p><p>{{location_name}}</p><img src="cid:profile-photo">',
     profile: {
       subject: 'Hello {{name}}',
       text: 'Name={{name}}',
@@ -46,6 +46,7 @@ test('raw mode: env values override config and CID attachment is included', asyn
     senderName: 'Tester',
     latitude: 35.0,
     longitude: 139.0,
+    locationName: 'Chiyoda City, Japan',
     isoTime: '2026-02-09T00:00:00.000Z',
     profileMailConfigPath: configPath,
     env: { PROFILE_NAME: 'Env Name' },
@@ -54,6 +55,7 @@ test('raw mode: env values override config and CID attachment is included', asyn
   assert.equal(msg.subject, 'Hello Env Name');
   assert.equal(msg.text, 'Name=Env Name');
   assert.match(msg.html, /<p>Env Name<\/p>/);
+  assert.match(msg.html, /<p>Chiyoda City, Japan<\/p>/);
   assert.equal(msg.attachments.length, 1);
   assert.equal(msg.attachments[0].cid, 'profile-photo');
   assert.equal(msg.attachments[0].contentType, 'image/png');

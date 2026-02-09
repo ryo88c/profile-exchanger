@@ -12,6 +12,7 @@ const ALLOWED_TEMPLATE_KEYS = new Set([
   'website',
   'recipient_email',
   'captured_at',
+  'location_name',
   'location_text',
   'latitude',
   'longitude',
@@ -114,13 +115,17 @@ async function buildProfileMessage({
   senderName,
   latitude,
   longitude,
+  locationName = '',
   isoTime,
   profileMailConfigPath,
   env = process.env,
 }) {
   const config = await loadProfileMailConfig(profileMailConfigPath);
   const configDir = path.dirname(profileMailConfigPath);
-  const locationText = `(${toDisplayValue(latitude)}, ${toDisplayValue(longitude)})`;
+  const locationNameText = toDisplayValue(locationName);
+  const locationText = locationNameText
+    ? `${locationNameText} (${toDisplayValue(latitude)}, ${toDisplayValue(longitude)})`
+    : `(${toDisplayValue(latitude)}, ${toDisplayValue(longitude)})`;
   const profileInfo = config.profile || {};
   const variables = {
     name: toDisplayValue(getProfileValue('name', profileInfo, env)),
@@ -131,6 +136,7 @@ async function buildProfileMessage({
     website: toDisplayValue(getProfileValue('website', profileInfo, env)),
     recipient_email: toDisplayValue(recipientEmail),
     captured_at: isoTime,
+    location_name: locationNameText,
     location_text: locationText,
     latitude: toDisplayValue(latitude),
     longitude: toDisplayValue(longitude),
